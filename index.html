@@ -138,9 +138,11 @@ tr:hover td{background:var(--bg2)}
       </div>
       <div class="card">
         <div class="filters">
-          <div class="fg"><label>Başlangıç</label><input type="date" id="fStart" onchange="load()"></div>
-          <div class="fg"><label>Bitiş</label><input type="date" id="fEnd" onchange="load()"></div>
-          <div class="fg"><label>Firma</label><input type="text" id="fFirma" placeholder="Ara..." oninput="load()" style="width:140px"></div>
+          <div class="fg"><label>Ay Seç</label><input type="month" id="fMonth" onchange="applyMonth()" style="width:145px"></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:2px;color:var(--txt3);font-size:12px">veya</div>
+          <div class="fg"><label>Başlangıç</label><input type="date" id="fStart" onchange="clearMonth();load()"></div>
+          <div class="fg"><label>Bitiş</label><input type="date" id="fEnd" onchange="clearMonth();load()"></div>
+          <div class="fg"><label>Firma</label><select id="fFirma" onchange="load()" style="width:150px"><option value="">Tümü</option></select></div>
           <div class="fg"><label>Modül</label><input type="text" id="fModul" placeholder="Ara..." oninput="load()" style="width:100px"></div>
           <button class="btn" onclick="clearF()" style="margin-bottom:0">Temizle</button>
         </div>
@@ -251,6 +253,28 @@ tr:hover td{background:var(--bg2)}
 </div>
 </div>
 
+
+<!-- DÜZENLE MODALİ -->
+<div id="editModal" class="overlay" style="display:none" onclick="if(event.target===this)closeEdit()">
+<div class="modal">
+  <h2>Aktiviteyi Düzenle</h2>
+  <input type="hidden" id="eId">
+  <div class="row2">
+    <div class="field"><label>Tarih</label><input type="date" id="eDate" style="width:100%"></div>
+    <div class="field"><label>Firma</label><select id="eFirma" style="width:100%"></select></div>
+  </div>
+  <div class="row3">
+    <div class="field"><label>Modül</label><input type="text" id="eModul" style="width:100%"></div>
+    <div class="field"><label>Birim</label><select id="eBirim" style="width:100%"><option value="saat">Saat</option><option value="gün">Gün</option></select></div>
+    <div class="field"><label>Adet</label><input type="number" id="eAdet" min="0" step="0.5" style="width:100%"></div>
+  </div>
+  <div class="field"><label>Tanım</label><textarea id="eTanim" style="min-height:140px;width:100%"></textarea></div>
+  <div class="mfooter">
+    <button class="btn" onclick="closeEdit()">İptal</button>
+    <button class="btn primary" id="editSaveBtn" onclick="saveEdit()">Güncelle</button>
+  </div>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -342,6 +366,13 @@ function renderFirmaChips() {
 }
 
 function populateFirmaDropdowns() {
+  // Filtre dropdown
+  const fSel = document.getElementById("fFirma");
+  if (fSel) {
+    const fCur = fSel.value;
+    fSel.innerHTML = "<option value=\"\">005400fcm00fc</option>" + firmalar.map(f=>`<option value="${f.ad}">${f.ad}</option>`).join("");
+    if (fCur) fSel.value = fCur;
+  }
   ['nFirma','bFirma'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
@@ -420,9 +451,9 @@ async function load() {
   document.getElementById('loadingRow').style.display = 'block';
   let q = sb.from('logs').select('*').order('date',{ascending:true}).order('created_at',{ascending:true});
   const s=document.getElementById('fStart').value, e=document.getElementById('fEnd').value;
-  const f=document.getElementById('fFirma').value.trim(), m=document.getElementById('fModul').value.trim();
+  const f=document.getElementById('fFirma').value, m=document.getElementById('fModul').value.trim();
   if (s) q=q.gte('date',s); if (e) q=q.lte('date',e);
-  if (f) q=q.ilike('firma',`%${f}%`); if (m) q=q.ilike('modul',`%${m}%`);
+  if (f) q=q.eq('firma',f); if (m) q=q.ilike('modul',`%${m}%`);
   const { data, error } = await q;
   document.getElementById('loadingRow').style.display = 'none';
   if (error) { toast('Veriler yüklenemedi: '+error.message, true); return; }
@@ -440,7 +471,7 @@ function render(data) {
       <td style="font-weight:500">${parseFloat(l.adet)}</td>
       <td>${l.birim}</td>
       <td style="color:var(--txt2);max-width:260px">${l.tanim||''}</td>
-      <td><button class="btn danger" onclick="del('${l.id}')">Sil</button></td>
+      <td style="white-space:nowrap"><button class="btn sm" onclick="openEdit('${l.id}')" style="margin-right:4px">Düzenle</button><button class="btn danger" onclick="del('${l.id}')">Sil</button></td>
     </tr>`).join('');
   updateStats(data);
 }
@@ -515,7 +546,7 @@ async function saveBulk() {
   toast(`${rows.length} kayıt eklendi.`); closeBulk(); if(aktivitelerLoaded)load();
 }
 
-function clearF(){['fStart','fEnd','fFirma','fModul'].forEach(id=>document.getElementById(id).value='');load();}
+function clearF(){document.getElementById('fMonth').value='';['fStart','fEnd','fModul'].forEach(id=>document.getElementById(id).value='');document.getElementById('fFirma').value='';load();}
 
 function exportExcel() {
   if(!currentData.length){alert('İndirilecek kayıt yok.');return;}
@@ -538,6 +569,55 @@ function exportExcel() {
   XLSX.writeFile(wb,`aktiviteler_${today()}.xlsx`);
 }
 
+
+function applyMonth() {
+  const m = document.getElementById("fMonth").value;
+  if (!m) return;
+  const [y,mo] = m.split("-");
+  const last = new Date(y, mo, 0).getDate();
+  document.getElementById("fStart").value = `${y}-${mo}-01`;
+  document.getElementById("fEnd").value   = `${y}-${mo}-${String(last).padStart(2,"0")}`;
+  load();
+}
+function clearMonth() { document.getElementById("fMonth").value = ""; }
+
+function openEdit(id) {
+  const l = currentData.find(x=>x.id===id);
+  if (!l) return;
+  document.getElementById("eId").value    = l.id;
+  document.getElementById("eDate").value  = l.date ? l.date.slice(0,10) : "";
+  document.getElementById("eModul").value = l.modul||"";
+  document.getElementById("eBirim").value = l.birim||"saat";
+  document.getElementById("eAdet").value  = l.adet||0;
+  document.getElementById("eTanim").value = l.tanim||"";
+  ["eFirma"].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel)return;
+    sel.innerHTML="<option value=\"\">\u2014 Firma seu00e7in u2014</option>"+firmalar.map(f=>`<option value="${f.ad}">${f.ad}</option>`).join("");
+    sel.value=l.firma||"";
+  });
+  document.getElementById("editModal").style.display="flex";
+}
+function closeEdit(){document.getElementById("editModal").style.display="none";}
+
+async function saveEdit() {
+  const id   = document.getElementById("eId").value;
+  const d    = document.getElementById("eDate").value;
+  if (!d){alert("Tarih giriniz.");return;}
+  const btn  = document.getElementById("editSaveBtn");
+  btn.disabled=true; btn.textContent="Güncelleniyor...";
+  const upd  = {
+    date:  d,
+    firma: document.getElementById("eFirma").value,
+    modul: document.getElementById("eModul").value.trim()||"FI",
+    birim: document.getElementById("eBirim").value,
+    adet:  parseFloat(document.getElementById("eAdet").value)||0,
+    tanim: document.getElementById("eTanim").value.trim()
+  };
+  const {error}=await sb.from("logs").update(upd).eq("id",id);
+  btn.disabled=false; btn.textContent="Güncelle";
+  if(error){toast("Güncellenemedi: "+error.message,true);return;}
+  toast("Güncellendi."); closeEdit(); load();
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(d){if(!d)return '';const s=typeof d==='string'?d.slice(0,10):d;const[y,m,dd]=s.split('-');return`${dd}.${m}.${y}`;}
