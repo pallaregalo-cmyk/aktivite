@@ -225,7 +225,7 @@ tr:hover td{background:var(--bg2)}
           <div class="fg"><label>Yıl</label><input type="number" id="rYear" value="" style="width:90px" onchange="loadRate()"></div>
           <div class="fg"><label>Firmalar</label><div id="rFirmaList" style="display:flex;flex-wrap:wrap;gap:6px;max-width:600px;margin-top:2px"></div></div>
           <div class="fg"><label>Aylar</label><div id="rAyList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px"></div></div>
-          <button class="btn primary" onclick="loadRate()" style="margin-top:22px">Hesapla</button>
+          
         </div>
       </div>
       <div class="stats" id="rStats">
@@ -768,6 +768,7 @@ const MONTHS_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağ
 function initRatePage(){
   document.getElementById('rYear').value=new Date().getFullYear();
   renderRateChips();
+  setTimeout(loadRate, 300);
 }
 function renderRateChips(){
   const fc=document.getElementById('rFirmaList');
@@ -778,7 +779,10 @@ function renderRateChips(){
       s.className='filter-chip sel';
       s.dataset.v=f.ad;
       s.textContent=f.ad;
-      s.addEventListener('click',function(){this.classList.toggle('sel');});
+      s.addEventListener('click',function(){
+        this.classList.toggle('sel');
+        loadRate();
+      });
       fc.appendChild(s);
     });
   }
@@ -790,13 +794,16 @@ function renderRateChips(){
       s.className='filter-chip sel';
       s.dataset.v=String(i+1);
       s.textContent=m;
-      s.addEventListener('click',function(){this.classList.toggle('sel');});
+      s.addEventListener('click',function(){
+        this.classList.toggle('sel');
+        loadRate();
+      });
       ac.appendChild(s);
     });
   }
 }
 function toggleChip(el){el.classList.toggle('sel');}
-function getSelChips(cid){return[...document.querySelectorAll('#'+cid+' .filter-chip.sel')].map(el=>el.dataset.v);}
+function getSelChips(cid){return[...document.querySelectorAll('#'+cid+' .filter-chip.sel')].map(el=>el.dataset.v).filter(v=>v!=='__all__');}
 async function loadRate(){
   const yil=parseInt(document.getElementById('rYear').value)||new Date().getFullYear();
   const selFirmalar=getSelChips('rFirmaList');
