@@ -774,13 +774,26 @@ function renderRateChips(){
   const fc=document.getElementById('rFirmaList');
   if(fc){
     fc.innerHTML='';
-    firmalar.forEach(f=>{
+    // Tumu butonu
+    const allF=document.createElement('span');
+    allF.className='filter-chip sel';
+    allF.dataset.v='__all__';
+    allF.textContent='Tümü';
+    allF.style.fontWeight='500';
+    allF.addEventListener('click',function(){
+      fc.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
+      loadRate();
+    });
+    fc.appendChild(allF);
+    firmalar.forEach(function(f){
       const s=document.createElement('span');
       s.className='filter-chip sel';
       s.dataset.v=f.ad;
       s.textContent=f.ad;
       s.addEventListener('click',function(){
-        this.classList.toggle('sel');
+        // Sadece bu firma secili kalsin
+        fc.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('sel'));
+        this.classList.add('sel');
         loadRate();
       });
       fc.appendChild(s);
@@ -789,13 +802,26 @@ function renderRateChips(){
   const ac=document.getElementById('rAyList');
   if(ac){
     ac.innerHTML='';
-    MONTHS_TR.forEach((m,i)=>{
+    // Tumu butonu
+    const allA=document.createElement('span');
+    allA.className='filter-chip sel';
+    allA.dataset.v='__all__';
+    allA.textContent='Tümü';
+    allA.style.fontWeight='500';
+    allA.addEventListener('click',function(){
+      ac.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
+      loadRate();
+    });
+    ac.appendChild(allA);
+    MONTHS_TR.forEach(function(m,i){
       const s=document.createElement('span');
       s.className='filter-chip sel';
       s.dataset.v=String(i+1);
       s.textContent=m;
       s.addEventListener('click',function(){
-        this.classList.toggle('sel');
+        // Sadece bu ay secili kalsin
+        ac.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('sel'));
+        this.classList.add('sel');
         loadRate();
       });
       ac.appendChild(s);
