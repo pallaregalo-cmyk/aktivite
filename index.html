@@ -523,8 +523,8 @@ function exportExcel() {
   currentData.forEach(l=>rows.push([fmt(l.date),l.firma||'',l.modul,parseFloat(l.adet),l.birim,l.tanim||'']));
   const totalSaat = currentData.reduce((s,l)=>s+parseFloat(l.adet||0),0);
   const totalGun  = parseFloat((totalSaat/8).toFixed(4));
-  rows.push(['','','','Toplam Saat', totalSaat, '']);
-  rows.push(['','','','Toplam Gün',  totalGun,  '']);
+  rows.push(['','','Toplam Saat', totalSaat, '', '']);
+  rows.push(['','','Toplam Gün',  totalGun,  '', '']);
   const ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:12},{wch:18},{wch:10},{wch:10},{wch:10},{wch:45}];
   // Toplam satırlarını kalın yap
