@@ -367,7 +367,7 @@ async function login(){
   btn.disabled=false;btn.textContent='Giriş Yap';
   if(error)err.textContent='Hatalı e-posta veya şifre.';
 }
-async function logout(){await sb.auth.signOut();window.location.reload();}
+async function logout(){await sb.auth.signOut({scope:'local'});localStorage.removeItem('sb-wrejmerelamucjfsddch-auth-token');window.location.href='/';}
 
 // ── NAV ──────────────────────────────────────────
 function showPage(name,el){
