@@ -443,6 +443,7 @@ async function loadFirmalar(){
   firmalar=data||[];
   renderFirmaChips();
   populateAllFirmaDropdowns();
+  renderRateChips();
 }
 
 function renderFirmaChips(){
@@ -766,10 +767,33 @@ async function deleteRate(id){
 const MONTHS_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function initRatePage(){
   document.getElementById('rYear').value=new Date().getFullYear();
+  renderRateChips();
+}
+function renderRateChips(){
   const fc=document.getElementById('rFirmaList');
-  if(fc)fc.innerHTML=firmalar.map(f=>`<span class="filter-chip sel" data-v="${f.ad}" onclick="toggleChip(this)">${f.ad}</span>`).join('');
+  if(fc){
+    fc.innerHTML='';
+    firmalar.forEach(f=>{
+      const s=document.createElement('span');
+      s.className='filter-chip sel';
+      s.dataset.v=f.ad;
+      s.textContent=f.ad;
+      s.addEventListener('click',function(){this.classList.toggle('sel');});
+      fc.appendChild(s);
+    });
+  }
   const ac=document.getElementById('rAyList');
-  if(ac)ac.innerHTML=MONTHS_TR.map((m,i)=>`<span class="filter-chip sel" data-v="${i+1}" onclick="toggleChip(this)">${m}</span>`).join('');
+  if(ac){
+    ac.innerHTML='';
+    MONTHS_TR.forEach((m,i)=>{
+      const s=document.createElement('span');
+      s.className='filter-chip sel';
+      s.dataset.v=String(i+1);
+      s.textContent=m;
+      s.addEventListener('click',function(){this.classList.toggle('sel');});
+      ac.appendChild(s);
+    });
+  }
 }
 function toggleChip(el){el.classList.toggle('sel');}
 function getSelChips(cid){return[...document.querySelectorAll('#'+cid+' .filter-chip.sel')].map(el=>el.dataset.v);}
