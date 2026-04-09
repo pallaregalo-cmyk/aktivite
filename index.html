@@ -336,39 +336,51 @@ let takipCache={fatura:{},odeme:{}};
 let takipYear={fatura:new Date().getFullYear(), odeme:new Date().getFullYear()};
 
 // ── AUTH ─────────────────────────────────────────
-sb.auth.onAuthStateChange(async (event,session)=>{
-  if(session){currentUser=session.user;await showApp();}
+sb.auth.onAuthStateChange((event,session)=>{
+  if(session){currentUser=session.user;showApp();}
   else{currentUser=null;showLogin();}
 });
 
 function showLogin(){
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('appScreen').style.display='none';
+  document.getElementById("loginScreen").style.display="flex";
+  document.getElementById("appScreen").style.display="none";
   aktivitelerLoaded=false;
 }
 
-async function showApp(){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appScreen').style.display='block';
-  document.getElementById('userEmail').textContent=currentUser.email;
-  const{data:uRow}=await sb.from('app_users').select('is_admin').eq('email',currentUser.email).maybeSingle();
-  isAdmin=currentUser.email===ADMIN_EMAIL||(uRow&&uRow.is_admin===true);
-  document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAdmin?'block':'none');
-  await loadFirmalar();
+function showApp(){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appScreen").style.display="block";
+  document.getElementById("userEmail").textContent=currentUser.email;
+  // Admin kontrolü - try/catch ile güvenli
+  isAdmin=currentUser.email===ADMIN_EMAIL;
+  document.querySelectorAll(".admin-only").forEach(el=>el.style.display=isAdmin?"block":"none");
+  loadFirmalar();
+  // Ek admin kontrolü DB'den (hata olsa bile temel isAdmin değeri zaten set edildi)
+  sb.from("app_users").select("is_admin").eq("email",currentUser.email).maybeSingle().then(({data})=>{
+    if(data&&data.is_admin){
+      isAdmin=true;
+      document.querySelectorAll(".admin-only").forEach(el=>el.style.display="block");
+    }
+  }).catch(()=>{});
 }
 
 async function login(){
-  const email=document.getElementById('lEmail').value.trim(),pass=document.getElementById('lPass').value;
-  const btn=document.getElementById('loginBtn'),err=document.getElementById('loginErr');
-  err.textContent='';
-  if(!email||!pass){err.textContent='E-posta ve şifre giriniz.';return;}
-  btn.disabled=true;btn.textContent='Giriş yapılıyor...';
+  const email=document.getElementById("lEmail").value.trim(),pass=document.getElementById("lPass").value;
+  const btn=document.getElementById("loginBtn"),err=document.getElementById("loginErr");
+  err.textContent="";
+  if(!email||!pass){err.textContent="E-posta ve şifre giriniz.";return;}
+  btn.disabled=true;btn.textContent="Giriş yapılıyor...";
   const{error}=await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false;btn.textContent='Giriş Yap';
-  if(error)err.textContent='Hatalı e-posta veya şifre.';
+  btn.disabled=false;btn.textContent="Giriş Yap";
+  if(error)err.textContent="Hatalı e-posta veya şifre.";
 }
-async function logout(){await sb.auth.signOut({scope:'local'});localStorage.removeItem('sb-wrejmerelamucjfsddch-auth-token');window.location.href='/';}
-
+function logout(){
+  try{
+    const key=Object.keys(localStorage).find(k=>k.includes("auth-token"));
+    if(key)localStorage.removeItem(key);
+  }catch(e){}
+  sb.auth.signOut().finally(()=>{ window.location.href="/"; });
+}
 // ── NAV ──────────────────────────────────────────
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
