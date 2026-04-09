@@ -521,11 +521,18 @@ function exportExcel() {
   if(!currentData.length){alert('İndirilecek kayıt yok.');return;}
   const rows=[['Tarih','Firma','Modül','Adet','Birim','Tanım']];
   currentData.forEach(l=>rows.push([fmt(l.date),l.firma||'',l.modul,parseFloat(l.adet),l.birim,l.tanim||'']));
-  const dataEnd=currentData.length+1;
-  rows.push(['','','','Toplam Saat',{f:`SUM(D2:D${dataEnd})`},'']);
-  rows.push(['','','','Toplam Gün',{f:`D${dataEnd+1}/8`},'']);
+  const totalSaat = currentData.reduce((s,l)=>s+parseFloat(l.adet||0),0);
+  const totalGun  = parseFloat((totalSaat/8).toFixed(4));
+  rows.push(['','','','Toplam Saat', totalSaat, '']);
+  rows.push(['','','','Toplam Gün',  totalGun,  '']);
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:12},{wch:18},{wch:10},{wch:8},{wch:10},{wch:45}];
+  ws['!cols']=[{wch:12},{wch:18},{wch:10},{wch:10},{wch:10},{wch:45}];
+  // Toplam satırlarını kalın yap
+  const r1 = currentData.length+2, r2 = currentData.length+3;
+  ['A','B','C','D','E','F'].forEach(col=>{
+    const c1=ws[col+r1]; if(c1){c1.s={font:{bold:true}};}
+    const c2=ws[col+r2]; if(c2){c2.s={font:{bold:true}};}
+  });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Aktiviteler');
   XLSX.writeFile(wb,`aktiviteler_${today()}.xlsx`);
