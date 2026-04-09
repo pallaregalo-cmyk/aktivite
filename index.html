@@ -662,7 +662,7 @@ async function saveBulk(){
         birim=document.getElementById('bBirim').value,adet=parseFloat(document.getElementById('bAdet').value)||0,
         tanim=document.getElementById('bTanim').value.trim(),wk=document.getElementById('bWeekend').checked;
   const rows=[];let cur=new Date(s+'T00:00:00');const end=new Date(e+'T00:00:00');
-  while(cur<=end){const dow=cur.getDay();if(wk||(dow!==0&&dow!==6))rows.push({id:uid(),date:cur.toISOString().slice(0,10),firma,modul,birim,adet,tanim});cur.setDate(cur.getDate()+1);}
+  while(cur<=end){const dow=cur.getDay();if(wk||(dow!==0&&dow!==6))const dd=String(cur.getDate()).padStart(2,'0'),mm=String(cur.getMonth()+1).padStart(2,'0'),yy=cur.getFullYear();rows.push({id:uid(),date:yy+'-'+mm+'-'+dd,firma,modul,birim,adet,tanim});cur.setDate(cur.getDate()+1);}
   if(!rows.length){alert('Seçilen aralıkta haftaiçi gün bulunamadı.');return;}
   const btn=document.getElementById('bulkSaveBtn');btn.disabled=true;btn.textContent=`Kaydediliyor (${rows.length} kayıt)...`;
   for(let i=0;i<rows.length;i+=100){const{error}=await sb.from('logs').insert(rows.slice(i,i+100));if(error){btn.disabled=false;btn.textContent='Kaydet';toast('Kaydedilemedi: '+error.message,true);return;}}
