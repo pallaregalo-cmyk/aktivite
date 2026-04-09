@@ -104,6 +104,8 @@ tr:hover td{background:var(--bg2)}
 .toggle input:checked+.toggle-slider{background:var(--success)}
 .toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
 .toggle-row{display:flex;align-items:center;gap:8px}
+.filter-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;user-select:none;transition:background .12s}
+.filter-chip.sel{background:var(--txt);color:var(--bg);border-color:transparent}
 </style>
 </head>
 <body>
@@ -125,6 +127,7 @@ tr:hover td{background:var(--bg2)}
     <button class="nav-tab" onclick="showPage('aktiviteler',this)">Aktiviteler</button>
     <button class="nav-tab admin-only" onclick="showPage('fatura',this)" style="display:none">Fatura Takip</button>
     <button class="nav-tab admin-only" onclick="showPage('odeme',this)" style="display:none">Ödeme Takip</button>
+    <button class="nav-tab admin-only" onclick="showPage('rate',this)" style="display:none">Rate Özeti</button>
     <button class="nav-tab admin-only" onclick="showPage('masterdata',this)" style="display:none">Master Data</button>
     <div class="topbar-right">
       <span class="user-email" id="userEmail"></span>
@@ -214,6 +217,31 @@ tr:hover td{background:var(--bg2)}
       </div>
     </div>
 
+
+    <!-- RATE ÖZETİ -->
+    <div class="page" id="page-rate">
+      <div class="card">
+        <div class="filters" style="align-items:flex-start">
+          <div class="fg"><label>Yıl</label><input type="number" id="rYear" value="" style="width:90px" onchange="loadRate()"></div>
+          <div class="fg"><label>Firmalar</label><div id="rFirmaList" style="display:flex;flex-wrap:wrap;gap:6px;max-width:600px;margin-top:2px"></div></div>
+          <div class="fg"><label>Aylar</label><div id="rAyList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px"></div></div>
+          <button class="btn primary" onclick="loadRate()" style="margin-top:22px">Hesapla</button>
+        </div>
+      </div>
+      <div class="stats" id="rStats">
+        <div class="stat"><div class="v">—</div><div class="l">Toplam Tutar</div></div>
+        <div class="stat"><div class="v">—</div><div class="l">Toplam Gün</div></div>
+        <div class="stat"><div class="v">—</div><div class="l">Firma Sayısı</div></div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Firma</th><th>Ay</th><th>Saat</th><th>Gün</th><th>Günlük Rate</th><th>Tutar</th></tr></thead>
+            <tbody id="rBody"><tr><td colspan="6" class="empty">Filtre seçip Hesapla butonuna basın</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <!-- MASTER DATA -->
     <div class="page" id="page-masterdata">
       <div class="card">
@@ -223,6 +251,21 @@ tr:hover td{background:var(--bg2)}
           <button class="btn primary" onclick="addFirma()">+ Ekle</button>
         </div>
         <div class="chip-list" id="firmaList"><span style="color:var(--txt3);font-size:13px">Yükleniyor...</span></div>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px">Firma Rate (Günlük)</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap">
+          <div class="fg"><label>Yıl</label><input type="number" id="rateYil" style="width:90px" placeholder="2025"></div>
+          <div class="fg"><label>Firma</label><select id="rateFirma" style="width:180px"><option value="">Seçin...</option></select></div>
+          <div class="fg"><label>Günlük Rate (TL/EUR/...)</label><input type="number" id="rateVal" style="width:130px" placeholder="0" min="0" step="0.01"></div>
+          <button class="btn primary" onclick="saveRate()">Kaydet</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Firma</th><th>Yıl</th><th>Günlük Rate</th><th></th></tr></thead>
+            <tbody id="rateList"><tr><td colspan="4" class="empty">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
       </div>
       <div class="card">
         <div class="section-title">Kullanıcı Ekle</div>
@@ -388,7 +431,8 @@ function showPage(name,el){
   document.getElementById('page-'+name).classList.add('active');
   if(el)el.classList.add('active');
   if(name==='aktiviteler'&&!aktivitelerLoaded){aktivitelerLoaded=true;load();}
-  if(name==='masterdata'){loadFirmalar();loadUserList();}
+  if(name==='masterdata'){loadFirmalar();loadUserList();loadRates();}
+  if(name==='rate'){initRatePage();loadRates();}
   if(name==='fatura'){document.getElementById('faturaYear').textContent=takipYear.fatura;loadTakip('fatura');}
   if(name==='odeme'){document.getElementById('odemeYear').textContent=takipYear.odeme;loadTakip('odeme');}
 }
@@ -682,6 +726,93 @@ function exportExcel(){
   });
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Aktiviteler');
   XLSX.writeFile(wb,'aktiviteler_'+today()+'.xlsx');
+}
+
+// ── RATE YÖNETİMİ ────────────────────────────────
+let rates=[];
+async function loadRates(){
+  const{data}=await sb.from('firma_rates').select('*').order('yil',{ascending:false}).order('firma');
+  rates=data||[];
+  renderRateList();
+  const sel=document.getElementById('rateFirma');
+  if(sel){const c=sel.value;sel.innerHTML='<option value="">Seçin...</option>'+firmalar.map(f=>`<option value="${f.ad}">${f.ad}</option>`).join('');if(c)sel.value=c;}
+}
+function renderRateList(){
+  const tb=document.getElementById('rateList');if(!tb)return;
+  if(!rates.length){tb.innerHTML='<tr><td colspan="4" class="empty">Rate eklenmedi.</td></tr>';return;}
+  tb.innerHTML=rates.map(r=>`<tr><td>${r.firma}</td><td>${r.yil}</td><td style="font-weight:500">${Number(r.gunluk_rate).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td><button class="btn danger" onclick="deleteRate('${r.id}')">Sil</button></td></tr>`).join('');
+}
+async function saveRate(){
+  const yil=parseInt(document.getElementById('rateYil').value);
+  const firma=document.getElementById('rateFirma').value;
+  const val=parseFloat(document.getElementById('rateVal').value)||0;
+  if(!yil||!firma){toast('Yıl ve firma seçiniz.',true);return;}
+  const exist=rates.find(r=>r.firma===firma&&r.yil===yil);
+  let error;
+  if(exist){({error}=await sb.from('firma_rates').update({gunluk_rate:val}).eq('id',exist.id));}
+  else{({error}=await sb.from('firma_rates').insert({id:uid(),firma,yil,gunluk_rate:val}));}
+  if(error){toast('Kaydedilemedi: '+error.message,true);return;}
+  toast('Rate kaydedildi.');
+  document.getElementById('rateVal').value='';
+  loadRates();
+}
+async function deleteRate(id){
+  if(!confirm('Bu rate\'yi silmek istediğinizden emin misiniz?'))return;
+  await sb.from('firma_rates').delete().eq('id',id);
+  toast('Silindi.');loadRates();
+}
+
+// ── RATE ÖZETİ ───────────────────────────────────
+const MONTHS_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function initRatePage(){
+  document.getElementById('rYear').value=new Date().getFullYear();
+  const fc=document.getElementById('rFirmaList');
+  if(fc)fc.innerHTML=firmalar.map(f=>`<span class="filter-chip sel" data-v="${f.ad}" onclick="toggleChip(this)">${f.ad}</span>`).join('');
+  const ac=document.getElementById('rAyList');
+  if(ac)ac.innerHTML=MONTHS_TR.map((m,i)=>`<span class="filter-chip sel" data-v="${i+1}" onclick="toggleChip(this)">${m}</span>`).join('');
+}
+function toggleChip(el){el.classList.toggle('sel');}
+function getSelChips(cid){return[...document.querySelectorAll('#'+cid+' .filter-chip.sel')].map(el=>el.dataset.v);}
+async function loadRate(){
+  const yil=parseInt(document.getElementById('rYear').value)||new Date().getFullYear();
+  const selFirmalar=getSelChips('rFirmaList');
+  const selAylar=getSelChips('rAyList').map(Number);
+  if(!selFirmalar.length||!selAylar.length){toast('Firma ve ay seçiniz.',true);return;}
+  const startDate=yil+'-01-01',endDate=yil+'-12-31';
+  const{data:logData,error}=await sb.from('logs').select('firma,birim,adet,date').gte('date',startDate).lte('date',endDate).in('firma',selFirmalar);
+  if(error){toast('Veri yüklenemedi: '+error.message,true);return;}
+  const rateMap={};
+  rates.filter(r=>r.yil===yil).forEach(r=>{rateMap[r.firma]=parseFloat(r.gunluk_rate)||0;});
+  const groups={};
+  (logData||[]).forEach(l=>{
+    const ay=new Date(l.date).getMonth()+1;
+    if(!selAylar.includes(ay))return;
+    const key=l.firma+'___'+ay;
+    if(!groups[key])groups[key]={firma:l.firma,ay,saat:0,gun:0};
+    if(l.birim==='gün'){groups[key].gun+=parseFloat(l.adet)||0;}
+    else{groups[key].saat+=parseFloat(l.adet)||0;}
+  });
+  const rows=Object.values(groups).sort((a,b)=>a.firma.localeCompare(b.firma)||a.ay-b.ay);
+  const tb=document.getElementById('rBody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="6" class="empty">Seçili kriterlerde kayıt bulunamadı.</td></tr>';updateRateStats([],{});return;}
+  tb.innerHTML=rows.map(r=>{
+    const rate=rateMap[r.firma]||0;
+    const tutar=(r.saat/8*rate)+(r.gun*rate);
+    return`<tr><td>${r.firma}</td><td>${MONTHS_TR[r.ay-1]}</td><td>${r.saat.toFixed(1)}</td><td>${r.gun.toFixed(2)}</td><td style="font-weight:500">${rate.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="font-weight:500;color:var(--success)">${tutar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
+  }).join('');
+  updateRateStats(rows,rateMap);
+}
+function updateRateStats(rows,rateMap){
+  const el=document.getElementById('rStats');if(!el)return;
+  if(!rows||!rows.length){el.innerHTML='<div class="stat"><div class="v">—</div><div class="l">Toplam Tutar</div></div><div class="stat"><div class="v">—</div><div class="l">Toplam Gün</div></div><div class="stat"><div class="v">—</div><div class="l">Firma Sayısı</div></div>';return;}
+  let totTutar=0,totGun=0;const firmSet=new Set();
+  rows.forEach(r=>{
+    const rate=(rateMap&&rateMap[r.firma])||0;
+    totTutar+=(r.saat/8*rate)+(r.gun*rate);
+    totGun+=r.saat/8+r.gun;
+    firmSet.add(r.firma);
+  });
+  el.innerHTML=`<div class="stat"><div class="v">${totTutar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="l">Toplam Tutar</div></div><div class="stat"><div class="v">${totGun.toFixed(2)} gün</div><div class="l">Toplam Gün</div></div><div class="stat"><div class="v">${firmSet.size}</div><div class="l">Firma Sayısı</div></div>`;
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
