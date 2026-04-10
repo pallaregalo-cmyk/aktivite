@@ -770,63 +770,43 @@ function initRatePage(){
   renderRateChips();
   setTimeout(loadRate, 300);
 }
+function makeChips(container, items, labelFn, valueFn){
+  container.innerHTML='';
+  const allChip=document.createElement('span');
+  allChip.className='filter-chip sel';
+  allChip.dataset.v='__all__';
+  allChip.textContent='Tümü';
+  allChip.style.fontWeight='500';
+  allChip.addEventListener('click',function(){
+    container.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
+    loadRate();
+  });
+  container.appendChild(allChip);
+  items.forEach(function(item,i){
+    const chip=document.createElement('span');
+    chip.className='filter-chip sel';
+    chip.dataset.v=String(valueFn(item,i));
+    chip.textContent=labelFn(item,i);
+    chip.addEventListener('click',function(){
+      // Toggle: seçiliyse kaldır, değilse ekle
+      this.classList.toggle('sel');
+      // Hiç seçili yoksa tümünü seç
+      const anySelected=[...container.querySelectorAll('.filter-chip:not([data-v="__all__"])')].some(c=>c.classList.contains('sel'));
+      if(!anySelected) container.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
+      // Tümü: hepsi seçiliyse aç, değilse kapat
+      const allItems=[...container.querySelectorAll('.filter-chip:not([data-v="__all__"])')];
+      const allSelected=allItems.every(c=>c.classList.contains('sel'));
+      container.querySelector('[data-v="__all__"]').classList.toggle('sel',allSelected);
+      loadRate();
+    });
+    container.appendChild(chip);
+  });
+}
 function renderRateChips(){
   const fc=document.getElementById('rFirmaList');
-  if(fc){
-    fc.innerHTML='';
-    // Tumu butonu
-    const allF=document.createElement('span');
-    allF.className='filter-chip sel';
-    allF.dataset.v='__all__';
-    allF.textContent='Tümü';
-    allF.style.fontWeight='500';
-    allF.addEventListener('click',function(){
-      fc.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
-      loadRate();
-    });
-    fc.appendChild(allF);
-    firmalar.forEach(function(f){
-      const s=document.createElement('span');
-      s.className='filter-chip sel';
-      s.dataset.v=f.ad;
-      s.textContent=f.ad;
-      s.addEventListener('click',function(){
-        // Sadece bu firma secili kalsin
-        fc.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('sel'));
-        this.classList.add('sel');
-        loadRate();
-      });
-      fc.appendChild(s);
-    });
-  }
+  if(fc) makeChips(fc, firmalar, f=>f.ad, f=>f.ad);
   const ac=document.getElementById('rAyList');
-  if(ac){
-    ac.innerHTML='';
-    // Tumu butonu
-    const allA=document.createElement('span');
-    allA.className='filter-chip sel';
-    allA.dataset.v='__all__';
-    allA.textContent='Tümü';
-    allA.style.fontWeight='500';
-    allA.addEventListener('click',function(){
-      ac.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
-      loadRate();
-    });
-    ac.appendChild(allA);
-    MONTHS_TR.forEach(function(m,i){
-      const s=document.createElement('span');
-      s.className='filter-chip sel';
-      s.dataset.v=String(i+1);
-      s.textContent=m;
-      s.addEventListener('click',function(){
-        // Sadece bu ay secili kalsin
-        ac.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('sel'));
-        this.classList.add('sel');
-        loadRate();
-      });
-      ac.appendChild(s);
-    });
-  }
+  if(ac) makeChips(ac, MONTHS_TR, (m,i)=>m, (m,i)=>i+1);
 }
 function toggleChip(el){el.classList.toggle('sel');}
 function getSelChips(cid){return[...document.querySelectorAll('#'+cid+' .filter-chip.sel')].map(el=>el.dataset.v).filter(v=>v!=='__all__');}
