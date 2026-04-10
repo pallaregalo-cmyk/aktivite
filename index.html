@@ -772,6 +772,7 @@ function initRatePage(){
 }
 function makeChips(container, items, labelFn, valueFn){
   container.innerHTML='';
+  // Tumu butonu
   const allChip=document.createElement('span');
   allChip.className='filter-chip sel';
   allChip.dataset.v='__all__';
@@ -788,15 +789,25 @@ function makeChips(container, items, labelFn, valueFn){
     chip.dataset.v=String(valueFn(item,i));
     chip.textContent=labelFn(item,i);
     chip.addEventListener('click',function(){
-      // Toggle: seçiliyse kaldır, değilse ekle
-      this.classList.toggle('sel');
-      // Hiç seçili yoksa tümünü seç
-      const anySelected=[...container.querySelectorAll('.filter-chip:not([data-v="__all__"])')].some(c=>c.classList.contains('sel'));
-      if(!anySelected) container.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
-      // Tümü: hepsi seçiliyse aç, değilse kapat
       const allItems=[...container.querySelectorAll('.filter-chip:not([data-v="__all__"])')];
       const allSelected=allItems.every(c=>c.classList.contains('sel'));
-      container.querySelector('[data-v="__all__"]').classList.toggle('sel',allSelected);
+      if(allSelected){
+        // Hepsi seçiliyken tıklama: sadece bu seçili kalsın
+        allItems.forEach(c=>c.classList.remove('sel'));
+        this.classList.add('sel');
+        container.querySelector('[data-v="__all__"]').classList.remove('sel');
+      } else {
+        // Kısmi seçimde toggle
+        this.classList.toggle('sel');
+        // Hiç seçili kalmazsa hepsini seç
+        const anySelected=allItems.some(c=>c.classList.contains('sel'));
+        if(!anySelected){
+          container.querySelectorAll('.filter-chip').forEach(c=>c.classList.add('sel'));
+        } else {
+          const nowAll=allItems.every(c=>c.classList.contains('sel'));
+          container.querySelector('[data-v="__all__"]').classList.toggle('sel',nowAll);
+        }
+      }
       loadRate();
     });
     container.appendChild(chip);
