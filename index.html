@@ -845,8 +845,9 @@ async function loadRate(){
   if(!rows.length){tb.innerHTML='<tr><td colspan="6" class="empty">Seçili kriterlerde kayıt bulunamadı.</td></tr>';updateRateStats([],{});return;}
   tb.innerHTML=rows.map(r=>{
     const rate=rateMap[r.firma]||0;
-    const tutar=(r.saat/8*rate)+(r.gun*rate);
-    return`<tr><td>${r.firma}</td><td>${MONTHS_TR[r.ay-1]}</td><td>${r.saat.toFixed(1)}</td><td>${r.gun.toFixed(2)}</td><td style="font-weight:500">${rate.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="font-weight:500;color:var(--success)">${tutar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
+    const toplamGun=(r.saat/8)+r.gun;  // saat/8 + gün = toplam gün
+    const tutar=toplamGun*rate;
+    return`<tr><td>${r.firma}</td><td>${MONTHS_TR[r.ay-1]}</td><td>${r.saat.toFixed(1)}</td><td>${toplamGun.toFixed(4)}</td><td style="font-weight:500">${rate.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="font-weight:500;color:var(--success)">${tutar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
   }).join('');
   updateRateStats(rows,rateMap);
 }
@@ -856,8 +857,9 @@ function updateRateStats(rows,rateMap){
   let totTutar=0,totGun=0;const firmSet=new Set();
   rows.forEach(r=>{
     const rate=(rateMap&&rateMap[r.firma])||0;
-    totTutar+=(r.saat/8*rate)+(r.gun*rate);
-    totGun+=r.saat/8+r.gun;
+    const toplamGun=(r.saat/8)+r.gun;
+    totTutar+=toplamGun*rate;
+    totGun+=toplamGun;
     firmSet.add(r.firma);
   });
   el.innerHTML=`<div class="stat"><div class="v">${totTutar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="l">Toplam Tutar</div></div><div class="stat"><div class="v">${totGun.toFixed(2)} gün</div><div class="l">Toplam Gün</div></div><div class="stat"><div class="v">${firmSet.size}</div><div class="l">Firma Sayısı</div></div>`;
